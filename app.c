@@ -3,63 +3,84 @@
 #include <locale.h>
 #include <string.h>
 
-#include "message.h"
-
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <errno.h>
-#include <arpa/inet.h> 
+#include <arpa/inet.h>
 
-/*struct user {
-	char name[15];
-};
+#include "message.h"
 
-/*struct message {
-	char buffer[100];
-	int size;
-};
-
-/*void sendMessage(struct message msg, int s) {
-	if (send(s, msg.buffer, msg.size, 0) < 0) {
-        perror("Erro ao enviar uma mensagem ");
-        exit(5);
-    }
-}*/
-
-void createUserQuery(char *msg, struct user u) {
-	sprintf(msg, "Nome: %s", u.name);
+void showUser(struct user u) {
+    printf("Usuário: %s\n", u.username);
+    printf("Nome: %s", u.name);
 }
 
-void create(int s) {
-	struct user u;
-	struct message msg;
-	char name[15];
+void createUser(int s) {
+    struct user u;
+    struct message msg;
 
-	printf("Nome: ");
-	scanf("%s", u.name);
+    printf("Nome: ");
+    scanf("%s", u.name);
 
-	//createUserQuery(msg.buffer, u);
-	msg.instruction = 1;
+    printf("Username: ");
+    scanf("%s", u.username);
+
+    u.status = 1;
+
+    msg.action = ACTION_CREATE;
     msg.u = u;
 
-	//printf("Mensagem: %s", msg.buffer);
-	sendMessage(msg, s);
+    sendMessage(msg, s);
+}
+
+void getUser(int s) {
+    struct user u;
+    struct message req;
+    struct message res = { RESPONSE };
+    int id;
+
+    printf("Usuário: ");
+    scanf("%s", u.username);
+
+    req.action = ACTION_GET;
+    req.u = u;
+
+    sendMessage(req, s);
+    receiveMessage(&res, s);
+
+    if (res.action == ERROR_RESPONSE) {
+        printf("\nUsuário não encontrado!\n\n");
+        return;
+    }
+
+    printf("\nDados do usuário:\n\n");
+    showUser(res.u);
+    printf("\n\n");
+}
+
+void getAllUsers() {
+
 }
 
 void showMenu(int s) {
 	int option;
 
 	while(1) {
-		printf("Menu:\n 1 - Criar usuário\nOpção: ");
+		printf("Menu:\n 1 - Adicionar usuário\n 2 - Buscar usuário por username\n 3 - Listar todos os usuários\n 4 - Alterar usuário\n 5 - Excluir usuário\nOpção: ");
 		scanf("%d", &option);
 
 		switch(option) {
 			case 1:
-				create(s);
+                system("clear");
+				createUser(s);
 				break;
+            case 2:
+                system("clear");
+                getUser(s);
+                break;
             default:
                 printf("Opção inválida!");
 		}
