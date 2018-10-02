@@ -15,7 +15,8 @@
 
 void showUser(struct user u) {
     printf("Usuário: %s\n", u.username);
-    printf("Nome: %s", u.name);
+    printf("Nome: %s\n", u.name);
+    printf("E-mail: %s", u.email);
 }
 
 void createUser(int s) {
@@ -28,9 +29,12 @@ void createUser(int s) {
     printf("Username: ");
     scanf("%s", u.username);
 
+    printf("E-mail: ");
+    scanf("%s", u.email);
+
     u.status = 1;
 
-    msg.action = ACTION_CREATE;
+    msg.code = CODE_CREATE;
     msg.u = u;
 
     sendMessage(msg, s);
@@ -39,20 +43,20 @@ void createUser(int s) {
 void getUser(int s) {
     struct user u;
     struct message req;
-    struct message res = { RESPONSE };
+    struct message res;
     int id;
 
     printf("Usuário: ");
     scanf("%s", u.username);
 
-    req.action = ACTION_GET;
+    req.code = CODE_GET;
     req.u = u;
 
     sendMessage(req, s);
     receiveMessage(&res, s);
 
-    if (res.action == ERROR_RESPONSE) {
-        printf("\nUsuário não encontrado!\n\n");
+    if (res.code == CODE_ERROR_USER_NOT_FOUND_RESPONSE) {
+        printf("\nUsuário não encontrado!\n");
         return;
     }
 
@@ -61,15 +65,67 @@ void getUser(int s) {
     printf("\n\n");
 }
 
-void getAllUsers() {
+void updateUser(int s) {
+    struct user u;
+    struct message req;
+    struct message res;
+    int alterData;
 
+    printf("Usuário: ");
+    scanf("%s", u.username);
+
+    printf("Dados a serem alterados:\n\n");
+
+    printf("Nome: ");
+    scanf("%s", u.name);
+
+    printf("E-mail: ");
+    scanf("%s", u.email);
+
+    req.code = CODE_UPDATE;
+    req.u = u;
+
+    sendMessage(req, s);
+    receiveMessage(&res, s);
+
+    if (res.code == CODE_ERROR_USER_NOT_FOUND_RESPONSE) {
+        printf("\nUsuário não encontrado!\n");
+        return;
+    } else if (res.code == CODE_ERROR_UPDATING_RESPONSE) {
+        printf("\nErro ao salvar alterações!!\n");
+        return;
+    }
+
+    printf("\nDados do usuário atualizados:\n\n");
+    showUser(res.u);
+    printf("\n\n");
+}
+
+void deleteUser(int s) {
+    struct user u;
+    struct message req = { CODE_DELETE };
+    struct message res;
+
+    printf("Usuário: ");
+    scanf("%s", u.username);
+
+    req.u = u;
+
+    sendMessage(req, s);
+    receiveMessage(&res, s);
+
+    printf("Response code: %d\n", res.code);
+}
+
+void allUsers(int s) {
+    
 }
 
 void showMenu(int s) {
 	int option;
 
 	while(1) {
-		printf("Menu:\n 1 - Adicionar usuário\n 2 - Buscar usuário por username\n 3 - Listar todos os usuários\n 4 - Alterar usuário\n 5 - Excluir usuário\nOpção: ");
+		printf("Menu:\n 1 - Adicionar usuário\n 2 - Buscar usuário por username\n 3 - Alterar usuário\n 4 - Excluir usuário\nOpção: ");
 		scanf("%d", &option);
 
 		switch(option) {
@@ -81,6 +137,18 @@ void showMenu(int s) {
                 system("clear");
                 getUser(s);
                 break;
+            case 3:
+                system("clear");
+                updateUser(s);
+                break;
+            case 4:
+                system("clear");
+                deleteUser(s);
+                break;
+            case 5:
+                system("clear");
+                allUsers(s);
+                break;
             default:
                 printf("Opção inválida!");
 		}
@@ -90,21 +158,17 @@ void showMenu(int s) {
 int main(int argc, char** argv) {
 	setlocale(LC_ALL, "");
 
-	unsigned short port;       /* Porta que o cliente ira se conectar              */
-    char buf[100];              /* Buffer para enviar e receber as informações    */
-    struct hostent *hostnm;    /* Informação do host servidor             */
-    struct sockaddr_in server; /* Estrutura do servidor                           */
-    int s;                     /* Socket do cliente       */
+	unsigned short port; // Porta que o cliente ira se conectar
+    struct hostent *hostnm; // Informação do host servidor
+    struct sockaddr_in server; // Estrutura do servidor
+    int s; // Socket do cliente
 
-    if (argc != 3)
-    {
+    if (argc != 3) {
         fprintf(stderr, "Uso correto: %s hostname port\n", argv[0]);
         exit(1);
     }
 
-    /*
-     * O nome do host é o primeiro argumento. Obtem o endereço do servidor.
-     */
+    // O nome do host é o primeiro argumento. Obtem o endereço do servidor.
     hostnm = gethostbyname(argv[1]);
 
     if (hostnm == (struct hostent *) 0) {
@@ -113,22 +177,22 @@ int main(int argc, char** argv) {
     }
 
     port = (unsigned short) atoi(argv[2]);
-
     server.sin_family      = AF_INET;
     server.sin_port        = htons(port);
     server.sin_addr.s_addr = *((unsigned long *)hostnm->h_addr);
 
-    if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    {
+    if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("Erro ao criar o Socket");
         exit(3);
     }
 
-    if (connect(s, (struct sockaddr *)&server, sizeof(server)) < 0)
-    {
+
+    if (connect(s, (struct sockaddr *)&server, sizeof(server)) < 0) {
         perror("Erro ao conectar com o servidor");
         exit(4);
     }
 
     showMenu(s);
+
+    return 0;
 }

@@ -15,7 +15,7 @@
 #include "message.h"
 //#include "sockets_conn_functions.h"
 
-#define FILE_NAME "users"
+#define FILE_NAME "users.dat"
 
 FILE *fdoc;
 
@@ -27,35 +27,39 @@ void openFile(char *file, char *opts) {
     }
 }
 
-void saveUser(struct user u) {
+void saveUser(struct user u, int ns) {
+    struct message res;
 	openFile(FILE_NAME, "ab+");
 	fseek(fdoc, 0L , SEEK_END);
 
 	if(fwrite(&u, sizeof(struct user), 1, fdoc) != 1) {
+        res.code = CODE_ERROR_CREATING_RESPONSE;
         printf("\n Erro de gravacao!");
         return;
+    } else {
+        res.code = CODE_SUCCESS_RESPONSE;
+        res.u = u;
     }
 
     fclose(fdoc);
-
-    printf("\nGravacao feita com sucesso!\n\n");
+    sendMessage(res, ns);
 }
 
 int searchUser(struct user u) {
-    int found=-1,pos=0;
-    struct user _u;
+    int found = 0, pos = 0;
+    struct user tempUser;
 
     openFile(FILE_NAME, "rb");
 
     rewind(fdoc);
 
-    while (!feof(fdoc) && found == -1) {
-        fread(&_u, sizeof(struct user), 1, fdoc);
+    while (!feof(fdoc) && !found) {
+        fread(&tempUser, sizeof(struct user), 1, fdoc);
 
         if (!feof(fdoc)) {
-            if (strcmp(u.username, _u.username) == 0) {
-                if (_u.status == 0) {
-                    pos=-2;
+            if (strcmp(u.username, tempUser.username) == 0) {
+                if (tempUser.status == 0) {
+                    pos = -2;
                 }
 
                 found = 1;
@@ -67,8 +71,8 @@ int searchUser(struct user u) {
         }
     }
 
-    if (found==-1) {
-        pos=-1;
+    if (!found) {
+        pos = -1;
     }
 
     fclose(fdoc);
@@ -78,14 +82,17 @@ int searchUser(struct user u) {
 
 void getUser(struct user u, int ns) {
     struct message res;
-    int result;
+    int pos = searchUser(u);
 
-    if (result = searchUser(u) == -1 || result == -2) {
-        res.action = ERROR_RESPONSE;
-    } else if (result >= 0) {
+    if (pos < 0) {
+        res.code = CODE_ERROR_USER_NOT_FOUND_RESPONSE;
+        res.extra = pos;
+    } else {
         openFile(FILE_NAME, "rb+");
-        res.action = RESPONSE;
-        fseek(fdoc, result * sizeof(struct user), SEEK_SET);
+        res.code = CODE_SUCCESS_RESPONSE;
+        res.extra = pos;
+
+        fseek(fdoc, pos * sizeof(struct user), SEEK_SET);
         fread(&res.u, sizeof(struct user), 1, fdoc);
     }
 
@@ -94,28 +101,78 @@ void getUser(struct user u, int ns) {
     fclose(fdoc);
 }
 
+void updateUser(struct user u, int ns) {
+    int pos = searchUser(u);
+    struct message res;
+
+    if (pos < 0) {
+        printf("err");
+        res.code = CODE_ERROR_USER_NOT_FOUND_RESPONSE;
+    } else {
+        openFile(FILE_NAME, "rb+");
+
+        fseek(fdoc, pos * sizeof(struct user), SEEK_SET);
+
+        if (fwrite(&u, sizeof(struct user), 1, fdoc)!=1) {
+            res.code = CODE_ERROR_UPDATING_RESPONSE;
+            printf("\nErro na gravacao!");
+            getch();
+        } else {
+            res.code = CODE_SUCCESS_RESPONSE;
+            res.u = u;
+            printf("\nAlteracao feita com sucesso!");
+            getch();
+        }
+    }
+
+    fclose(fdoc);
+    sendMessage(res, ns);
+}
+
+void deleteUser(struct user u, int ns) {
+    int pos = searchUser(u);
+    struct message res;
+
+    if (pos < 0) {
+        res.code = CODE_ERROR_USER_NOT_FOUND_RESPONSE;
+    } else {
+        openFile(FILE_NAME, "rb+");
+
+        fseek(fdoc, pos * sizeof(struct user), SEEK_CUR);
+        fread(&u, sizeof(struct user), 1, fdoc);
+
+        u.status = 0;
+
+        fseek(fdoc, pos * sizeof(struct user), SEEK_SET);
+
+        if (fwrite(&u, sizeof(struct user),1, fdoc)!=1) {
+            res.code = CODE_ERROR_DELETING_RESPONSE;
+            printf("\nErro na gravacao!");
+        } else {
+            res.code = CODE_SUCCESS_RESPONSE;
+            res.u = u;
+            printf("\nUsuário excluído com sucesso!");
+        }
+    }
+
+    fclose(fdoc);
+    sendMessage(res, ns);
+}
+
+void getAllUsers(int ns) {
+    int total;
+    struct message res;
+
+    fseek(fdoc, 0L, SEEK_END);
+    total = ftell(fdoc) / sizeof(struct user);
+    res.extra = total;
+
+    sendMessage(res, ns);
+}
+
 void checkArguments(int argc, char** argv);
 
 int main(int argc, char** argv) {
-    
-
-    /*checkArguments(argc, argv);
-    definePort(&port, argv);
-    createSocket(&s);
-    server.sin_family = AF_INET;
-    server.sin_port   = htons(port);
-    server.sin_addr.s_addr = INADDR_ANY;
-    bindSocketToServerAdress(&s, server, port);
-    waitForConnections(&s);
-
-    if (recv(ns, &msg, sizeof(struct message), 0) == -1)
-    {
-        perror("Erro ao receber a mensagem");
-        exit(6);
-    }
-
-    printf("%s\n", msg.u.name);*/
-
     unsigned short port;       /* port server binds to                  */
     char buf_cli[100];              /* Buffer para enviar e receber os dados */
     char buf_server[100];              /* Buffer para enviar e receber os dados */
@@ -129,12 +186,7 @@ int main(int argc, char** argv) {
     /*
      * Checa os argumentos. Devem ser somente: O número da porta para a comunicação.
      */
-
-    if (argc != 2)
-    {
-        fprintf(stderr, "Uso correto: %s port\n", argv[0]);
-        exit(1);
-    }
+    checkArguments(argc, argv);
 
     /*
      * O primeiro argumento deve ser a porta.
@@ -144,8 +196,7 @@ int main(int argc, char** argv) {
     /*
      * Cria o socket para aceitar conexões.
      */
-    if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    {
+    if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("Erro ao criar o socket");
         exit(2);
     }
@@ -157,18 +208,16 @@ int main(int argc, char** argv) {
     server.sin_port   = htons(port);
     server.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(s, (struct sockaddr *)&server, sizeof(server)) < 0)
-    {
+    if (bind(s, (struct sockaddr *)&server, sizeof(server)) < 0) {
        perror("Erro no Bind()");
        exit(3);
     }
 
-    while(1) {
+    
         /*
          * Esperando por conexões. Especificando apenas uma conexão .
          */
-        if (listen(s, 1) != 0)
-        {
+        if (listen(s, 1) != 0) {
             perror("Erro na espera de conexões");
             exit(4);
         }
@@ -178,28 +227,29 @@ int main(int argc, char** argv) {
          */
         namelen = sizeof(client);
 
-        if ((ns = accept(s, (struct sockaddr *)&client, &namelen)) == -1)
-        {
+        if ((ns = accept(s, (struct sockaddr *)&client, &namelen)) == -1) {
             perror("Erro ao aceitar as conexões");
             exit(5);
         }
 
-        /*
-         * Recebe a mensagem pelo socket conectado.
-         */
-        if (recv(ns, &msg, sizeof(struct message), 0) == -1)
-        {
+    while(1) {
+        if (recv(ns, &msg, sizeof(struct message), 0) == -1) {
             perror("Erro ao receber a mensagem");
             exit(6);
-        }
+        } 
 
-        switch (msg.action) {
-            case 1:
-                saveUser(msg.u);
+        switch (msg.code) {
+            case CODE_CREATE:
+                saveUser(msg.u, ns);
                 break;
-            case 2:
-                printf("dfs");
+            case CODE_GET:
                 getUser(msg.u, ns);
+                break;
+            case CODE_UPDATE:
+                updateUser(msg.u, ns);
+                break;
+            case CODE_DELETE:
+                deleteUser(msg.u, ns);
                 break;
         }
     }
