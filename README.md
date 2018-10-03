@@ -1,5 +1,5 @@
 # Trabalho Redes
-----------------
+
 ## Compilando
 Só execute o commando ```make```.
 ```bash
