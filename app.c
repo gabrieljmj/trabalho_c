@@ -19,6 +19,9 @@ void showUser(struct user u) {
     printf("E-mail: %s", u.email);
 }
 
+/**
+ * Cria um usuário
+ */
 void createUser(int s) {
     struct user u;
     struct message msg;
@@ -40,6 +43,9 @@ void createUser(int s) {
     sendMessage(msg, s);
 }
 
+/**
+ * Mostra os dados de um usuário a partir de seu username
+ */
 void getUser(int s) {
     struct user u;
     struct message req;
@@ -65,6 +71,9 @@ void getUser(int s) {
     printf("\n\n");
 }
 
+/**
+ * Atualiza os dados de um usuário
+ */
 void updateUser(int s) {
     struct user u;
     struct message req;
@@ -101,6 +110,10 @@ void updateUser(int s) {
     printf("\n\n");
 }
 
+
+/**
+ * Delete um usuário
+ */
 void deleteUser(int s) {
     struct user u;
     struct message req = { CODE_DELETE };
@@ -117,48 +130,79 @@ void deleteUser(int s) {
     printf("Response code: %d\n", res.code);
 }
 
-void allUsers(int s) {
-    
+/**
+ * Retorna os dados de todos os usuários
+ */
+void getAllUsers(int s) {
+    struct message req;
+    struct message res;
+    int last = 0;
+  
+    req.code = CODE_GET_ALL;
+  
+    sendMessage(req, s);
+  
+    while(!last) {
+        receiveMessage(&res, s);
+            
+        showUser(res.u);
+
+        printf("\n\n");
+            
+        last = res.unique ? 1 : 0;
+    }
 }
 
+void closeConnection(int s) {
+    struct message req;
+
+    req.code = CODE_CLOSE_CONNECTION;
+
+    sendMessage(req, s);
+    exit(0);
+}
+
+/**
+ * Exibe o menu
+ */
 void showMenu(int s) {
-	int option;
+    int option;
 
-	while(1) {
-		printf("Menu:\n 1 - Adicionar usuário\n 2 - Buscar usuário por username\n 3 - Alterar usuário\n 4 - Excluir usuário\nOpção: ");
-		scanf("%d", &option);
+    while(1) {
+        printf("Menu:\n 1 - Adicionar usuário\n 2 - Buscar usuário por username\n 3 - Listar todos os usuários\n 4 - Alterar usuário\n 5 - Excluir usuário\n 0 - Sair\nOpção: ");
+        scanf("%d", &option);
 
-		switch(option) {
-			case 1:
-                system("clear");
-				createUser(s);
-				break;
+        system("clear");
+
+        switch(option) {
+            case 1:
+                createUser(s);
+                break;
             case 2:
-                system("clear");
                 getUser(s);
                 break;
             case 3:
-                system("clear");
-                updateUser(s);
+                getAllUsers(s);
                 break;
             case 4:
-                system("clear");
-                deleteUser(s);
+                updateUser(s);
                 break;
             case 5:
-                system("clear");
-                allUsers(s);
+                deleteUser(s);
                 break;
+            case 0:
+                closeConnection(s);
             default:
-                printf("Opção inválida!");
-		}
-	}
+                printf("Opção inválida!\n\n");
+                break;
+        }
+    }
 }
 
 int main(int argc, char** argv) {
-	setlocale(LC_ALL, "");
+    setlocale(LC_ALL, "");
 
-	unsigned short port; // Porta que o cliente ira se conectar
+    unsigned short port; // Porta que o cliente ira se conectar
     struct hostent *hostnm; // Informação do host servidor
     struct sockaddr_in server; // Estrutura do servidor
     int s; // Socket do cliente

@@ -10,11 +10,18 @@ $ gcc app.c -o bin/app
 $ gcc app_server.c -o bin/server -ltinfo -lncurses
 ```
 
+ou só executa isso:
+```bash
+$ make
+```
+
 ## Running
+### Terminal 1
 ```bash
 $ ./bin/server 3000
 ```
 
+### Terminal 2
 ```bash
 $ ./bin/app localhost 3000
 ```

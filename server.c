@@ -20,7 +20,7 @@
 FILE *fdoc;
 
 void openFile(char *file, char *opts) {
-	if ((fdoc = fopen(file, opts)) == NULL) {
+    if ((fdoc = fopen(file, opts)) == NULL) {
         printf("\nO arquivo nao pode ser aberto!! \n");
         getch();
         exit(1);
@@ -29,10 +29,10 @@ void openFile(char *file, char *opts) {
 
 void saveUser(struct user u, int ns) {
     struct message res;
-	openFile(FILE_NAME, "ab+");
-	fseek(fdoc, 0L , SEEK_END);
+    openFile(FILE_NAME, "ab+");
+    fseek(fdoc, 0L , SEEK_END);
 
-	if(fwrite(&u, sizeof(struct user), 1, fdoc) != 1) {
+    if(fwrite(&u, sizeof(struct user), 1, fdoc) != 1) {
         res.code = CODE_ERROR_CREATING_RESPONSE;
         printf("\n Erro de gravacao!");
         return;
@@ -86,11 +86,9 @@ void getUser(struct user u, int ns) {
 
     if (pos < 0) {
         res.code = CODE_ERROR_USER_NOT_FOUND_RESPONSE;
-        res.extra = pos;
     } else {
         openFile(FILE_NAME, "rb+");
         res.code = CODE_SUCCESS_RESPONSE;
-        res.extra = pos;
 
         fseek(fdoc, pos * sizeof(struct user), SEEK_SET);
         fread(&res.u, sizeof(struct user), 1, fdoc);
@@ -160,14 +158,46 @@ void deleteUser(struct user u, int ns) {
 }
 
 void getAllUsers(int ns) {
-    int total;
+    struct user tempUser;
     struct message res;
+    int i, counter = 0;
+      
+    res.code = CODE_SUCCESS_RESPONSE;
 
-    fseek(fdoc, 0L, SEEK_END);
-    total = ftell(fdoc) / sizeof(struct user);
-    res.extra = total;
+    openFile(FILE_NAME, "rb");
+      
+    while (!feof(fdoc)) {
+        fread(&tempUser, sizeof(struct user), 1, fdoc);
+        counter++;
+    }
 
-    sendMessage(res, ns);
+    counter--;
+
+    fclose(fdoc);
+
+    openFile(FILE_NAME, "rb");
+
+    for (i = 1; i <= counter; i++) {
+        fread(&tempUser, sizeof(struct user), 1, fdoc);
+        
+        if (tempUser.status == 1) {
+            res.u = tempUser;
+            
+            if (i == counter) {
+              res.unique = 1;
+            }
+            
+            sendMessage(res, ns);
+        }
+    }
+
+    fclose(fdoc);
+}
+
+void closeConnection(int ns, int s) {
+    close(ns);
+    close(s);
+    exit(0);
 }
 
 void checkArguments(int argc, char** argv);
@@ -213,24 +243,17 @@ int main(int argc, char** argv) {
        exit(3);
     }
 
-    
-        /*
-         * Esperando por conexões. Especificando apenas uma conexão .
-         */
-        if (listen(s, 1) != 0) {
-            perror("Erro na espera de conexões");
-            exit(4);
-        }
+    if (listen(s, 1) != 0) {
+        perror("Erro na espera de conexões");
+        exit(4);
+    }
 
-        /*
-         * Aceitando conexões.
-         */
-        namelen = sizeof(client);
+    namelen = sizeof(client);
 
-        if ((ns = accept(s, (struct sockaddr *)&client, &namelen)) == -1) {
-            perror("Erro ao aceitar as conexões");
-            exit(5);
-        }
+    if ((ns = accept(s, (struct sockaddr *)&client, &namelen)) == -1) {
+        perror("Erro ao aceitar as conexões");
+        exit(5);
+    }
 
     while(1) {
         if (recv(ns, &msg, sizeof(struct message), 0) == -1) {
@@ -251,6 +274,11 @@ int main(int argc, char** argv) {
             case CODE_DELETE:
                 deleteUser(msg.u, ns);
                 break;
+            case CODE_GET_ALL:
+                getAllUsers(ns);
+                break;
+            case CODE_CLOSE_CONNECTION:
+                closeConnection(ns, s);
         }
     }
 }
