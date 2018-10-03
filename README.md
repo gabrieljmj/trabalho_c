@@ -1,7 +1,16 @@
 # Trabalho Redes
+----------------
+## Compile app.c
+```bash
+$ gcc app.c -o bin/app
+```
 
-## Compilando
-Só execute o commando ```make```.
+## Compile app_server.c
+```bash
+$ gcc app_server.c -o bin/server -ltinfo -lncurses
+```
+
+## Compile via Makefile
 ```bash
 $ make
 ```

@@ -171,7 +171,9 @@ void getAllUsers(int ns) {
         counter++;
     }
 
-    counter--;
+    if (counter > 1) {
+        counter--;
+    }
 
     fclose(fdoc);
 

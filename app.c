@@ -101,7 +101,7 @@ void updateUser(int s) {
         printf("\nUsuário não encontrado!\n");
         return;
     } else if (res.code == CODE_ERROR_UPDATING_RESPONSE) {
-        printf("\nErro ao salvar alterações!!\n");
+        printf("\nErro ao salvar alterações!\n");
         return;
     }
 
@@ -127,7 +127,19 @@ void deleteUser(int s) {
     sendMessage(req, s);
     receiveMessage(&res, s);
 
-    printf("Response code: %d\n", res.code);
+    if (res.code == CODE_ERROR_USER_NOT_FOUND_RESPONSE) {
+        printf("\nUsuário não encontrado!\n");
+        return;
+    }
+
+    if (res.code == CODE_ERROR_DELETING_RESPONSE) {
+        printf("\nErro ao excluir usuário!\n");
+        return;
+    }
+
+    if (res.code == CODE_SUCCESS_RESPONSE) {
+        printf("\nUsuário deletado com sucesso!\n");
+    }
 }
 
 /**
@@ -150,6 +162,10 @@ void getAllUsers(int s) {
         printf("\n\n");
             
         last = res.unique ? 1 : 0;
+    }
+
+    if (!last) {
+        printf("\nNenhum usuário cadastrado!\n");
     }
 }
 
