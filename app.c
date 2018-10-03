@@ -217,7 +217,7 @@ void showMenu(int s) {
 
 int main(int argc, char** argv) {
     setlocale(LC_ALL, "");
-printf("%d", CODE_GET);
+
     unsigned short port; // Porta que o cliente ira se conectar
     struct hostent *hostnm; // Informação do host servidor
     struct sockaddr_in server; // Estrutura do servidor
